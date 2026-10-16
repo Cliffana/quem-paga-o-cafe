@@ -892,8 +892,13 @@
 
     function bloquearGestor() {
         const grupo = grupoAtivo();
-        if (grupo) sessaoGestor[grupo.id] = false;
+        if (grupo) {
+            sessaoGestor[grupo.id] = false;
+            grupo.criouAqui = false;
+            guardarDados();
+        }
         atualizarTela();
+        mostrarMsg('gestor-msg', '🔒 Gestão bloqueada.', true);
     }
 
     /* ===================== identidade ===================== */
