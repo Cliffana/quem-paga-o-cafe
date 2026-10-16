@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Quem Paga o Café?</title>
+    <meta name="theme-color" content="#1B120E">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Café">
+    <style>
+        :root {
+            --bg: #140E0B; --surface: #261A14; --surface-2: #33241C;
+            --border: rgba(255,190,120,0.14); --text: #FFF6EE; --muted: #B9A492;
+            --accent: #FFB347; --accent-2: #FF5E62; --success: #3DDC97;
+            --danger: #FF6B6B; --warning: #FFD166;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+            margin: 0; min-height: 100vh; color: var(--text);
+            background:
+                radial-gradient(900px 600px at -10% -10%, rgba(255,94,98,0.35), transparent 60%),
+                radial-gradient(800px 600px at 110% 110%, rgba(255,179,71,0.3), transparent 60%),
+                linear-gradient(160deg, #1B120E 0%, #0E0907 100%);
+            background-attachment: fixed;
+            display: flex; justify-content: center; padding: 28px 16px 48px;
+        }
+        .container { width: 100%; max-width: 480px; }
+        .brand { text-align: center; margin-bottom: 24px; }
+        .brand .logo { font-size: 52px; display: inline-block; animation: wiggle 3s ease-in-out infinite; }
+        @keyframes wiggle {
+            0%,100% { transform: rotate(-6deg); }
+            50% { transform: rotate(6deg) translateY(-6px); }
+        }
+        .brand h1 {
+            margin: 8px 0 0; font-size: 28px; font-weight: 900;
+            background: linear-gradient(110deg, #FFD166, #FFB347 35%, #FF5E62);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 20px; padding: 18px; margin-bottom: 16px;
+            box-shadow: 0 18px 40px rgba(0,0,0,0.4);
+        }
+        .card-title {
+            font-size: 12px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1.2px; color: var(--accent); margin: 0 0 14px;
+        }
+        .hero {
+            text-align: center; padding: 26px 20px; border-radius: 20px; margin-bottom: 16px;
+            background: linear-gradient(135deg, #FF5E62, #FF9966 50%, #FFB347);
+            color: #2A1409; box-shadow: 0 20px 44px rgba(255,94,98,0.35);
+        }
+        .hero .label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.4px; opacity: .85; margin: 0; }
+        .hero .payer { font-size: 30px; font-weight: 900; margin: 8px 0 4px; }
+        .hero small { font-size: 12px; opacity: .85; }
+        .badge {
+            display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 999px;
+            background: rgba(20,14,11,0.85); color: var(--warning); font-size: 12px; font-weight: 700;
+        }
+        label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+        input, select {
+            width: 100%; padding: 12px 14px; background: var(--surface-2);
+            border: 1px solid var(--border); border-radius: 14px;
+            color: var(--text); font-size: 15px; font-family: inherit;
+        }
+        input:focus, select:focus {
+            outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255,179,71,0.18);
+        }
+        select option { background: var(--surface); }
+        .field + .field { margin-top: 12px; }
+        .row { display: flex; gap: 8px; }
+        .row input { flex: 1; min-width: 0; }
+        .exception {
+            background: rgba(255,209,102,0.07); border: 1px dashed rgba(255,209,102,0.5);
+            border-radius: 16px; padding: 12px;
+        }
+        .exception label { color: var(--warning); }
+        button {
+            font-family: inherit; background: linear-gradient(135deg, #FFB347, #FF5E62);
+            color: #1E0F08; border: none; padding: 12px 18px; border-radius: 14px;
+            cursor: pointer; font-weight: 800; font-size: 14px;
+            transition: transform .15s ease, box-shadow .25s ease;
+            box-shadow: 0 6px 18px rgba(255,94,98,0.35);
+        }
+        button:hover { transform: translateY(-2px); }
+        button:active { transform: scale(0.96); }
+        .btn-ghost { background: var(--surface-2); color: var(--text); box-shadow: none; border: 1px solid var(--border); }
+        .btn-danger { background: rgba(255,107,107,0.15); color: var(--danger); border: 1px solid rgba(255,107,107,0.35); box-shadow: none; }
+        .btn-pay {
+            background: linear-gradient(135deg, #3DDC97, #00B894); color: #04261A;
+            padding: 10px 14px; font-size: 12px; white-space: nowrap;
+            box-shadow: 0 6px 18px rgba(61,220,151,0.35);
+        }
+        .full-btn { width: 100%; }
+        .members { width: 100%; border-collapse: collapse; }
+        .members th {
+            text-align: left; font-size: 11px; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--muted); padding: 0 6px 10px;
+        }
+        .members td { padding: 12px 6px; border-top: 1px solid var(--border); vertical-align: middle; }
+        .members tbody tr:hover { background: rgba(255,179,71,0.05); }
+        .member-info { display: flex; align-items: center; gap: 12px; }
+        .avatar-container { position: relative; width: 46px; height: 46px; flex-shrink: 0; cursor: pointer; }
+        .avatar {
+            width: 46px; height: 46px; border-radius: 50%; object-fit: cover;
+            background: var(--surface-2); border: 2px solid var(--accent); display: block;
+        }
+        .file-input-label {
+            position: absolute; bottom: -3px; right: -3px;
+            background: linear-gradient(135deg, #FFB347, #FF5E62); color: #1E0F08;
+            border-radius: 50%; width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; border: 2px solid var(--surface);
+        }
+        .file-input { display: none; }
+        .member-name-input {
+            font-size: 15px; font-weight: 700; background: transparent;
+            border: 1px solid transparent; padding: 6px 8px; width: 100%;
+            min-width: 90px; border-radius: 10px; color: var(--text);
+        }
+        .member-name-input:focus { background: var(--surface-2); border-color: var(--border); }
+        .spent { font-weight: 800; color: var(--success); font-size: 14px; }
+        .actions { text-align: right; white-space: nowrap; }
+        .actions .btn-danger { padding: 7px 9px; margin-left: 4px; }
+        .panel {
+            display: none; margin-top: 10px; background: var(--surface-2);
+            border: 1px solid var(--border); border-radius: 14px; padding: 14px;
+        }
+        .pin-display { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+        .pin-display strong { color: var(--accent); font-size: 18px; letter-spacing: 3px; }
+        .msg { font-size: 12px; min-height: 16px; margin: 8px 0 0; }
+        .admin-section { display: flex; flex-direction: column; gap: 16px; }
+        .admin-section h4 { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+        .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 8px 0; }
+        .footer { text-align: center; margin-top: 24px; }
+        .footer button { opacity: .6; font-size: 11px; padding: 6px 10px; }
+        .code {
+            font-size: 24px; font-weight: 900; letter-spacing: 4px; text-align: center;
+            color: var(--accent); margin: 10px 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="brand">
+        <div class="logo">☕</div>
+        <h1>Quem Paga o Café?</h1>
+    </div>
+
+    <div class="card">
+        <p class="card-title">Grupo</p>
+        <div class="field">
+            <label for="group-selector">Escolher grupo</label>
+            <select id="group-selector" onchange="alterarGrupo()"></select>
+        </div>
+
+        <div class="field" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+            <label>Criar novo grupo</label>
+            <input type="text" id="new-group-name" placeholder="Nome do novo grupo...">
+            <div style="height:8px"></div>
+            <input type="password" id="new-group-pin" placeholder="Palavra-passe do gestor (mín. 6)...">
+            <button class="full-btn" onclick="criarGrupo()" style="margin-top:10px;">Criar Grupo</button>
+            <p class="msg" id="criar-erro"></p>
+        </div>
+
+        <div class="field" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+            <label>Entrar num grupo existente</label>
+            <div class="row">
+                <input type="text" id="codigo-entrar" placeholder="Código (ex: K7M2-9QF4)" style="text-transform:uppercase;">
+                <button class="btn-ghost" onclick="entrarComCodigo()">Entrar</button>
+            </div>
+            <p class="msg" id="entrar-erro"></p>
+        </div>
+    </div>
+
+    <p class="empty" id="sem-grupos">Ainda não tens grupos. Cria um acima para começar ☕</p>
+
+    <div id="content-area" style="display:none;">
+        <h2 id="group-title" style="text-align:center; font-size:20px; margin:0 0 16px;">Grupo Ativo</h2>
+
+        <div class="hero">
+            <p class="label">Último a pagar</p>
+            <div class="payer" id="last-payer">Ninguém registado</div>
+            <small id="last-date"></small>
+            <div><span class="badge" id="payer-badge" style="display:none;"></span></div>
+        </div>
+
+        <div class="card" id="sync-card" style="display:none;">
+            <p class="card-title">🔄 Sincronização</p>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 4px; text-align:center;">Partilha este código com os amigos para entrarem no grupo:</p>
+            <div class="code" id="codigo-grupo">----</div>
+            <button class="btn-ghost full-btn" onclick="partilharCodigo()">📋 Copiar / Partilhar código</button>
+            <p class="msg" id="sync-estado"></p>
+        </div>
+
+        <div class="card">
+            <p class="card-title">💰 Configuração de Custos</p>
+            <div class="field">
+                <label for="cfg-default-price">Valor padrão do café (€)</label>
+                <input type="number" id="cfg-default-price" step="0.05" value="1.50" oninput="atualizarPrecoPadrao()">
+            </div>
+            <div class="field exception">
+                <label for="cfg-exception-price">⚠️ Valor exceção (apenas próximo café)</label>
+                <input type="number" id="cfg-exception-price" step="0.05" placeholder="Ex: 4.50">
+            </div>
+        </div>
+
+        <div class="card">
+            <p class="card-title">👥 Membros e Gastos</p>
+            <p style="font-size:12px; color:var(--muted); margin:-6px 0 12px;">Toca na foto para carregar/alterar o perfil.</p>
+            <table class="members">
+                <thead>
+                    <tr><th>Amigo</th><th>Total</th><th style="text-align:right;">Ações</th></tr>
+                </thead>
+                <tbody id="friends-list"></tbody>
+            </table>
+        </div>
+
+        <div class="card admin-section">
+            <div>
+                <h4>⚙️ Adicionar pessoa ao grupo</h4>
+                <div class="row">
+                    <input type="text" id="new-name" placeholder="Nome do amigo...">
+                    <button onclick="addPerson()">Adicionar</button>
+                </div>
+                <p class="msg" id="add-erro"></p>
+            </div>
+
+            <div>
+                <h4>🔐 Painel do Gestor</h4>
+                <button class="btn-ghost full-btn" onclick="togglePainelPin()">🔑 Palavra-passe</button>
+                <div class="panel" id="painel-pin">
+                    <p class="pin-display">Palavra-passe atual: <strong id="pin-atual">----</strong></p>
+                    <div class="row">
+                        <input type="text" id="novo-pin" placeholder="Nova palavra-passe (mín. 6)...">
+                        <button onclick="alterarPin()">Alterar</button>
+                    </div>
+                    <p class="msg" id="pin-msg"></p>
+                </div>
+
+                <button class="btn-danger full-btn" onclick="togglePainelReset()" style="margin-top:12px;">🔄 Reset aos dados do grupo</button>
+                <div class="panel" id="painel-reset">
+                    <label>Introduz a palavra-passe para confirmar o reset:</label>
+                    <div class="row">
+                        <input type="password" id="reset-pin" placeholder="Palavra-passe do gestor...">
+                        <button class="btn-danger" onclick="confirmarReset()">Resetar</button>
+                    </div>
+                    <p class="msg" id="reset-msg"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <button class="btn-ghost full-btn" id="btn-instalar" style="display:none; margin-bottom:12px;" onclick="instalarApp()">📲 Instalar no telemóvel</button>
+        <button class="btn-danger" onclick="limparTudo()">⚠️ Limpar Todos os Grupos</button>
+    </div>
+</div>
+
+<script>
+    /* =====================================================================
+       SINCRONIZAÇÃO — sem configuração da tua parte
+       ---------------------------------------------------------------------
+       Usa o MantleDB (https://mantledb.sh): um serviço gratuito, sem registo
+       e sem prazo, que guarda um JSON por grupo. O "código do grupo" é o que
+       dá acesso: quem o souber consegue ler e escrever esse grupo.
+       ===================================================================== */
+    const NUVEM = 'https://mantledb.sh/v2';
+    const ITERACOES_HASH = 150000;
+    const ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const CHAVE_LOCAL = 'cafe_app_validado_pro';
+    const INTERVALO_POLL = 5000;
+
+    let dadosApp = { grupoAtivo: null, grupos: {} };
+    let timerPoll = null;
+    let gravando = false;
+    let vivoEnviado = false;
+
+    /* ===================== utilitários ===================== */
+    function bytesToBase64(bytes) {
+        let s = '';
+        for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+        return btoa(s);
+    }
+    function base64ToBytes(b64) {
+        const s = atob(b64);
+        const a = new Uint8Array(s.length);
+        for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+        return a;
+    }
+    function randomSalt() {
+        const a = new Uint8Array(16);
+        crypto.getRandomValues(a);
+        return bytesToBase64(a);
+    }
+    function gerarCodigo() {
+        const a = new Uint8Array(8);
+        crypto.getRandomValues(a);
+        let c = '';
+        for (let i = 0; i < 8; i++) c += ALFABETO[a[i] % ALFABETO.length];
+        return c;
+    }
+    function formatarCodigo(codigo) {
+        if (!codigo) return '----';
+        return codigo.substring(0, 4) + '-' + codigo.substring(4);
+    }
+    function normalizarCodigo(txt) {
+        return (txt || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+    function urlGrupo(codigo) {
+        return NUVEM + '/cafe-' + codigo + '/estado';
+    }
+    async function derivarHash(pin, saltB64, iter) {
+        const key = await crypto.subtle.importKey(
+            'raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']
+        );
+        const bits = await crypto.subtle.deriveBits(
+            { name: 'PBKDF2', salt: base64ToBytes(saltB64), iterations: iter, hash: 'SHA-256' },
+            key, 256
+        );
+        return bytesToBase64(new Uint8Array(bits));
+    }
+    async function verificarPin(grupo, pin) {
+        if (grupo.passwordHash) {
+            const h = await derivarHash(pin, grupo.passwordSalt, grupo.passwordIter || ITERACOES_HASH);
+            return h === grupo.passwordHash;
+        }
+        return pin === grupo.password;
+    }
+    function temPin(grupo) { return !!(grupo.passwordHash || grupo.password); }
+    function pinVisivel(grupo) {
+        if (grupo.passwordHash) return '🔒 protegida';
+        if (grupo.password) return grupo.password;
+        return '(sem palavra-passe)';
+    }
+    function escapar(txt) {
+        return String(txt == null ? '' : txt)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    /* ===================== persistência local ===================== */
+    function carregarDados() {
+        try {
+            const localData = localStorage.getItem(CHAVE_LOCAL);
+            if (localData) {
+                const parsed = JSON.parse(localData);
+                if (parsed && parsed.grupos && typeof parsed.grupoAtivo === 'string') {
+                    dadosApp = parsed;
+                }
+            }
+        } catch (e) { console.log("Erro na leitura local."); }
+    }
+    function guardarDados() {
+        try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(dadosApp)); }
+        catch (e) { console.warn("Armazenamento local cheio.", e); }
+    }
+    function grupoAtivo() {
+        const id = dadosApp.grupoAtivo;
+        if (!id || !dadosApp.grupos[id]) return null;
+        return dadosApp.grupos[id];
+    }
+    function ehNuvem(grupo) { return !!(grupo && grupo.codigo); }
+
+    /* ===================== nuvem (MantleDB) ===================== */
+    function definirEstadoSync(tipo, texto) {
+        const el = document.getElementById('sync-estado');
+        if (!el) return;
+        el.textContent = texto;
+        el.style.color = tipo === 'on' ? 'var(--success)' : (tipo === 'err' ? 'var(--danger)' : 'var(--muted)');
+    }
+
+    function docDoGrupo(grupo) {
+        return {
+            name: grupo.name,
+            defaultPrice: grupo.defaultPrice,
+            lastPayer: grupo.lastPayer,
+            lastDate: grupo.lastDate,
+            friends: grupo.friends,
+            passwordSalt: grupo.passwordSalt || null,
+            passwordHash: grupo.passwordHash || null,
+            passwordIter: grupo.passwordIter || null,
+            versao: grupo.versao || 0
+        };
+    }
+
+    function aplicarRemoto(grupo, d) {
+        grupo.name = d.name || grupo.name;
+        grupo.defaultPrice = (typeof d.defaultPrice === 'number') ? d.defaultPrice : grupo.defaultPrice;
+        grupo.lastPayer = d.lastPayer || 'Ninguém';
+        grupo.lastDate = d.lastDate || '';
+        grupo.friends = Array.isArray(d.friends) ? d.friends.map(f => ({
+            id: f.id, name: f.name, avatar: f.avatar || '', totalSpent: f.totalSpent || 0
+        })) : grupo.friends;
+        if (d.passwordHash) {
+            grupo.passwordHash = d.passwordHash;
+            grupo.passwordSalt = d.passwordSalt;
+            grupo.passwordIter = d.passwordIter;
+            delete grupo.password;
+        }
+        grupo.versao = d.versao || grupo.versao || 0;
+    }
+
+    async function gravarNuvem() {
+        const grupo = grupoAtivo();
+        if (!ehNuvem(grupo)) return;
+        grupo.versao = Date.now();
+        gravando = true;
+        try {
+            const r = await fetch(urlGrupo(grupo.codigo), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(docDoGrupo(grupo))
+            });
+            definirEstadoSync(r.ok ? 'on' : 'err', r.ok ? '🟢 Sincronizado' : '🔴 Falha a gravar');
+        } catch (e) {
+            definirEstadoSync('err', '🔴 Sem ligação');
+        } finally {
+            gravando = false;
+        }
+    }
+
+    async function puxarNuvem() {
+        const grupo = grupoAtivo();
+        if (!ehNuvem(grupo) || gravando) return;
+        const idAtual = grupo.id;
+
+        let r;
+        try {
+            r = await fetch(urlGrupo(grupo.codigo), { cache: 'no-store' });
+        } catch (e) {
+            definirEstadoSync('err', '🔴 Sem ligação');
+            return;
+        }
+
+        const g = dadosApp.grupos[idAtual];
+        if (!g || g.codigo !== grupo.codigo) return;
+
+        if (r.status === 404) {
+            // O grupo desapareceu da nuvem (ex: inatividade) -> recria-se a partir da cópia local
+            await gravarNuvem();
+            definirEstadoSync('on', '🟢 Sincronizado (recriado)');
+            return;
+        }
+        if (!r.ok) { definirEstadoSync('err', '🔴 Erro ' + r.status); return; }
+
+        let d;
+        try { d = await r.json(); } catch (e) { definirEstadoSync('err', '🔴 Resposta inválida'); return; }
+
+        if ((d.versao || 0) > (g.versao || 0)) {
+            aplicarRemoto(g, d);
+            guardarDados();
+            atualizarTela();
+            definirEstadoSync('on', '🟢 Sincronizado');
+        } else {
+            definirEstadoSync('on', '🟢 Sincronizado');
+        }
+    }
+
+    // Mantém o grupo "vivo" na nuvem (evita expiração por inatividade)
+    async function manterVivo() {
+        const grupo = grupoAtivo();
+        if (!ehNuvem(grupo) || vivoEnviado) return;
+        vivoEnviado = true;
+        try {
+            await fetch(urlGrupo(grupo.codigo), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ toque: Date.now() })
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    function gerirPoll() {
+        const grupo = grupoAtivo();
+        const precisa = ehNuvem(grupo);
+        if (precisa && !timerPoll) {
+            timerPoll = setInterval(() => { if (!document.hidden) puxarNuvem(); }, INTERVALO_POLL);
+        } else if (!precisa && timerPoll) {
+            clearInterval(timerPoll);
+            timerPoll = null;
+        }
+        if (precisa) manterVivo();
+    }
+
+    /* ===================== grupos ===================== */
+    function mostrarMsg(id, texto, ok) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = texto;
+        el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+    }
+
+    function estruturaBase(nome) {
+        return {
+            name: nome,
+            defaultPrice: 1.50,
+            lastPayer: "Ninguém",
+            lastDate: "",
+            friends: [
+                { id: 'm_1', name: "Tu (Gestor)", avatar: "", totalSpent: 0 },
+                { id: 'm_2', name: "Amigo 1", avatar: "", totalSpent: 0 }
+            ]
+        };
+    }
+
+    async function criarGrupo() {
+        const nome = document.getElementById('new-group-name').value.trim();
+        const pin = document.getElementById('new-group-pin').value.trim();
+
+        if (nome === '') { mostrarMsg('criar-erro', 'Dá um nome ao grupo.', false); return; }
+        if (pin.length < 6) { mostrarMsg('criar-erro', 'Usa uma palavra-passe com pelo menos 6 caracteres.', false); return; }
+
+        const codigo = gerarCodigo();
+        let salt = null, hash = null;
+        try {
+            salt = randomSalt();
+            hash = await derivarHash(pin, salt, ITERACOES_HASH);
+        } catch (e) {
+            mostrarMsg('criar-erro', 'Erro de segurança do browser. Usa HTTPS.', false);
+            return;
+        }
+
+        const idLocal = 'g_' + Date.now();
+        const grupo = Object.assign({ id: idLocal, codigo: codigo, passwordSalt: salt, passwordHash: hash, passwordIter: ITERACOES_HASH, versao: Date.now() }, estruturaBase(nome));
+
+        // grava na nuvem
+        gravando = true;
+        let ok = false;
+        try {
+            const r = await fetch(urlGrupo(codigo), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(docDoGrupo(grupo))
+            });
+            ok = r.ok;
+        } catch (e) { ok = false; }
+        gravando = false;
+
+        if (!ok) { mostrarMsg('criar-erro', 'Sem ligação à nuvem. Tenta novamente.', false); return; }
+
+        dadosApp.grupos[idLocal] = grupo;
+        dadosApp.grupoAtivo = idLocal;
+        document.getElementById('new-group-name').value = '';
+        document.getElementById('new-group-pin').value = '';
+        mostrarMsg('criar-erro', '');
+        vivoEnviado = false;
+        guardarDados();
+        atualizarTela();
+    }
+
+    async function entrarComCodigo() {
+        const codigo = normalizarCodigo(document.getElementById('codigo-entrar').value);
+        if (codigo.length !== 8) { mostrarMsg('entrar-erro', 'Código inválido (ex: K7M2-9QF4).', false); return; }
+
+        let d;
+        try {
+            const r = await fetch(urlGrupo(codigo), { cache: 'no-store' });
+            if (r.status === 404) { mostrarMsg('entrar-erro', 'Grupo não encontrado. Confirma o código.', false); return; }
+            if (!r.ok) { mostrarMsg('entrar-erro', 'Erro ' + r.status + '. Tenta novamente.', false); return; }
+            d = await r.json();
+        } catch (e) {
+            mostrarMsg('entrar-erro', 'Sem ligação. Verifica a internet.', false);
+            return;
+        }
+
+        const idLocal = 'g_' + Date.now();
+        dadosApp.grupos[idLocal] = {
+            id: idLocal,
+            codigo: codigo,
+            name: d.name,
+            defaultPrice: d.defaultPrice,
+            lastPayer: d.lastPayer,
+            lastDate: d.lastDate,
+            friends: d.friends || [],
+            passwordHash: d.passwordHash || null,
+            passwordSalt: d.passwordSalt || null,
+            passwordIter: d.passwordIter || null,
+            versao: d.versao || 0
+        };
+        dadosApp.grupoAtivo = idLocal;
+        document.getElementById('codigo-entrar').value = '';
+        mostrarMsg('entrar-erro', '');
+        vivoEnviado = false;
+        guardarDados();
+        atualizarTela();
+    }
+
+    function alterarGrupo() {
+        const seletor = document.getElementById('group-selector');
+        dadosApp.grupoAtivo = seletor.value;
+        vivoEnviado = false;
+        guardarDados();
+        atualizarTela();
+        puxarNuvem();
+    }
+
+    function partilharCodigo() {
+        const grupo = grupoAtivo();
+        if (!grupo || !grupo.codigo) return;
+        const codigo = formatarCodigo(grupo.codigo);
+        const texto = `Junta-te ao grupo "${grupo.name}" na app Quem Paga o Café? Código: ${codigo}`;
+
+        if (navigator.share) {
+            navigator.share({ title: 'Quem Paga o Café?', text: texto }).catch(() => {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(codigo).then(
+                () => definirEstadoSync('on', '✅ Código copiado: ' + codigo),
+                () => definirEstadoSync('on', 'Código: ' + codigo)
+            );
+        } else {
+            definirEstadoSync('on', 'Código: ' + codigo);
+        }
+    }
+
+    /* ===================== membros ===================== */
+    function atualizarPrecoPadrao() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        const valor = parseFloat(document.getElementById('cfg-default-price').value);
+        if (!isNaN(valor)) {
+            grupo.defaultPrice = valor;
+            guardarDados();
+            gravarNuvem();
+        }
+    }
+
+    function addPerson() {
+        const grupo = grupoAtivo();
+        const input = document.getElementById('new-name');
+        const nomeAmigo = input.value.trim();
+        if (!grupo) return;
+        if (nomeAmigo === '') { mostrarMsg('add-erro', 'Escreve um nome.', false); return; }
+
+        grupo.friends.push({ id: 'm_' + Date.now(), name: nomeAmigo, avatar: "", totalSpent: 0 });
+        input.value = '';
+        mostrarMsg('add-erro', '');
+        guardarDados();
+        gravarNuvem();
+        atualizarTela();
+    }
+
+    function removePerson(idAmigo) {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        grupo.friends = grupo.friends.filter(f => f.id !== idAmigo);
+        guardarDados();
+        gravarNuvem();
+        atualizarTela();
+    }
+
+    function editarNome(idGrupo, idMembro, novoNome) {
+        if (!novoNome.trim()) return;
+        dadosApp.grupos[idGrupo].friends = dadosApp.grupos[idGrupo].friends.map(f =>
+            f.id === idMembro ? Object.assign({}, f, { name: novoNome.trim() }) : f
+        );
+        guardarDados();
+        gravarNuvem();
+    }
+
+    /* ===================== foto ===================== */
+    function uploadAvatar(input, grupoId, membroId) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+                const tam = 160;
+                const canvas = document.createElement('canvas');
+                canvas.width = tam;
+                canvas.height = tam;
+                const ctx = canvas.getContext('2d');
+                const min = Math.min(img.width, img.height);
+                const sx = (img.width - min) / 2;
+                const sy = (img.height - min) / 2;
+                ctx.drawImage(img, sx, sy, min, min, 0, 0, tam, tam);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+                const grupo = dadosApp.grupos[grupoId];
+                if (!grupo) return;
+                const membro = grupo.friends.find(f => f.id === membroId);
+                if (!membro) return;
+                membro.avatar = dataUrl;
+                guardarDados();
+                gravarNuvem();
+                atualizarTela();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+        input.value = '';
+    }
+
+    /* ===================== pagamentos ===================== */
+    function calcularPreco() {
+        const excecaoInput = document.getElementById('cfg-exception-price');
+        const defaultInput = document.getElementById('cfg-default-price');
+        if (excecaoInput.value.trim() !== '') {
+            const v = parseFloat(excecaoInput.value);
+            excecaoInput.value = '';
+            return v;
+        }
+        return parseFloat(defaultInput.value);
+    }
+
+    async function handlePay(idMembro) {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+
+        if (ehNuvem(grupo)) await puxarNuvem();
+
+        const g = grupoAtivo();
+        const membro = g.friends.find(f => f.id === idMembro);
+        if (!membro) return;
+
+        const preco = calcularPreco();
+        const agora = new Date().toLocaleString('pt-PT', {
+            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+
+        g.lastPayer = membro.name;
+        g.lastDate = agora;
+        if (!isNaN(preco)) membro.totalSpent = (membro.totalSpent || 0) + preco;
+
+        guardarDados();
+        if (ehNuvem(g)) await gravarNuvem();
+        atualizarTela();
+    }
+
+    /* ===================== palavra-passe ===================== */
+    function togglePainelPin() {
+        const painel = document.getElementById('painel-pin');
+        const abrir = painel.style.display !== 'block';
+        painel.style.display = abrir ? 'block' : 'none';
+        if (abrir) {
+            const grupo = grupoAtivo();
+            document.getElementById('pin-atual').textContent = grupo ? pinVisivel(grupo) : '----';
+            document.getElementById('novo-pin').value = '';
+            document.getElementById('pin-msg').textContent = '';
+        }
+    }
+
+    async function alterarPin() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+
+        const novo = document.getElementById('novo-pin').value.trim();
+        if (novo.length < 6) { mostrarMsg('pin-msg', 'Mínimo 6 caracteres.', false); return; }
+
+        if (ehNuvem(grupo)) {
+            const salt = randomSalt();
+            const hash = await derivarHash(novo, salt, ITERACOES_HASH);
+            grupo.passwordSalt = salt;
+            grupo.passwordHash = hash;
+            grupo.passwordIter = ITERACOES_HASH;
+            delete grupo.password;
+            await gravarNuvem();
+        } else {
+            grupo.password = novo;
+        }
+
+        guardarDados();
+        document.getElementById('pin-atual').textContent = pinVisivel(grupo);
+        document.getElementById('novo-pin').value = '';
+        mostrarMsg('pin-msg', '✅ Palavra-passe alterada!', true);
+    }
+
+    /* ===================== reset ===================== */
+    function togglePainelReset() {
+        const painel = document.getElementById('painel-reset');
+        painel.style.display = (painel.style.display === 'block') ? 'none' : 'block';
+        document.getElementById('reset-pin').value = '';
+        document.getElementById('reset-msg').textContent = '';
+    }
+
+    async function confirmarReset() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        if (!temPin(grupo)) { mostrarMsg('reset-msg', 'Este grupo não tem palavra-passe definida.', false); return; }
+
+        const pin = document.getElementById('reset-pin').value.trim();
+        const ok = await verificarPin(grupo, pin);
+        if (!ok) { mostrarMsg('reset-msg', 'Palavra-passe incorreta!', false); return; }
+
+        grupo.lastPayer = 'Ninguém';
+        grupo.lastDate = '';
+        grupo.friends = grupo.friends.map(f => Object.assign({}, f, { totalSpent: 0 }));
+
+        guardarDados();
+        if (ehNuvem(grupo)) await gravarNuvem();
+        document.getElementById('reset-pin').value = '';
+        document.getElementById('painel-reset').style.display = 'none';
+        atualizarTela();
+        mostrarMsg('add-erro', '✅ Dados do grupo reiniciados!', true);
+    }
+
+    function limparTudo() {
+        dadosApp = { grupoAtivo: null, grupos: {} };
+        localStorage.removeItem(CHAVE_LOCAL);
+        atualizarTela();
+    }
+
+    /* ===================== render ===================== */
+    function atualizarTela() {
+        const seletor = document.getElementById('group-selector');
+        const content = document.getElementById('content-area');
+        const groupTitle = document.getElementById('group-title');
+        const lastPayerEl = document.getElementById('last-payer');
+        const lastDateEl = document.getElementById('last-date');
+        const payerBadge = document.getElementById('payer-badge');
+        const friendsList = document.getElementById('friends-list');
+        const semGrupos = document.getElementById('sem-grupos');
+        const syncCard = document.getElementById('sync-card');
+
+        document.getElementById('painel-pin').style.display = 'none';
+        document.getElementById('painel-reset').style.display = 'none';
+
+        seletor.innerHTML = '';
+        const grupoIds = Object.keys(dadosApp.grupos);
+
+        if (grupoIds.length === 0) {
+            content.style.display = 'none';
+            if (semGrupos) semGrupos.style.display = 'block';
+            const opt = document.createElement('option');
+            opt.text = 'Nenhum grupo';
+            opt.value = '';
+            seletor.add(opt);
+            if (timerPoll) { clearInterval(timerPoll); timerPoll = null; }
+            return;
+        }
+
+        if (semGrupos) semGrupos.style.display = 'none';
+
+        grupoIds.forEach(id => {
+            const grupo = dadosApp.grupos[id];
+            const opt = document.createElement('option');
+            opt.text = grupo.name + (grupo.codigo ? ' ☁️' : '');
+            opt.value = id;
+            if (id === dadosApp.grupoAtivo) opt.selected = true;
+            seletor.add(opt);
+        });
+
+        const grupo = grupoAtivo();
+        if (!grupo) { content.style.display = 'none'; return; }
+
+        content.style.display = 'block';
+        groupTitle.textContent = grupo.name;
+        lastPayerEl.textContent = grupo.lastPayer || 'Ninguém registado';
+        lastDateEl.textContent = grupo.lastDate ? `Última atualização: ${grupo.lastDate}` : '';
+
+        if (grupo.lastPayer && grupo.lastPayer !== 'Ninguém') {
+            payerBadge.style.display = 'inline-block';
+            payerBadge.textContent = `💰 ${grupo.lastPayer} pagou o último café`;
+        } else {
+            payerBadge.style.display = 'none';
+        }
+
+        if (grupo.codigo) {
+            syncCard.style.display = 'block';
+            document.getElementById('codigo-grupo').textContent = formatarCodigo(grupo.codigo);
+        } else {
+            syncCard.style.display = 'none';
+        }
+
+        const defaultInput = document.getElementById('cfg-default-price');
+        if (defaultInput && document.activeElement !== defaultInput) {
+            defaultInput.value = grupo.defaultPrice || 1.50;
+        }
+
+        friendsList.innerHTML = '';
+        grupo.friends.forEach(friend => {
+            const tr = document.createElement('tr');
+            const nomeHtml = escapar(friend.name);
+            const avatarAttr = friend.avatar ? `src="${friend.avatar}"` : '';
+            const esconderImg = friend.avatar ? '' : `style="display:none"`;
+            tr.innerHTML = `
+                <td>
+                    <div class="member-info">
+                        <div class="avatar-container" onclick="document.getElementById('avatar-${grupo.id}-${friend.id}').click()">
+                            <img ${avatarAttr} ${esconderImg} alt="${nomeHtml}" class="avatar" onerror="this.style.display='none';">
+                            <span class="file-input-label">📷</span>
+                            <input type="file" id="avatar-${grupo.id}-${friend.id}" class="file-input" accept="image/*" onchange="uploadAvatar(this, '${grupo.id}', '${friend.id}')">
+                        </div>
+                        <input type="text" class="member-name-input" value="${nomeHtml}" onchange="editarNome('${grupo.id}', '${friend.id}', this.value)">
+                    </div>
+                </td>
+                <td class="spent">€${(friend.totalSpent || 0).toFixed(2)}</td>
+                <td class="actions">
+                    <button class="btn-pay" onclick="handlePay('${friend.id}')">Paguei Hoje!</button>
+                    <button class="btn-danger" onclick="removePerson('${friend.id}')">🗑️</button>
+                </td>
+            `;
+            friendsList.appendChild(tr);
+        });
+
+        gerirPoll();
+    }
+
+    /* ===================== arranque ===================== */
+    carregarDados();
+    atualizarTela();
+    puxarNuvem();
+
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) puxarNuvem(); });
+
+    /* ===================== PWA ===================== */
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+    }
+
+    let eventoInstalar = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        eventoInstalar = e;
+        const b = document.getElementById('btn-instalar');
+        if (b) b.style.display = 'block';
+    });
+    window.instalarApp = async function () {
+        if (!eventoInstalar) return;
+        eventoInstalar.prompt();
+        try { await eventoInstalar.userChoice; } catch (e) {}
+        eventoInstalar = null;
+        const b = document.getElementById('btn-instalar');
+        if (b) b.style.display = 'none';
+    };
+    window.addEventListener('appinstalled', () => {
+        const b = document.getElementById('btn-instalar');
+        if (b) b.style.display = 'none';
+    });
+</script>
+
+</body>
+</html>
