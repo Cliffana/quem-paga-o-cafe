@@ -3,7 +3,7 @@
    restantes ficheiros do próprio site = cache primeiro.
    Pedidos a outros domínios (nuvem de dados) passam diretos. */
 
-const CACHE = 'cafe-v2';
+const CACHE = 'cafe-v3';
 const FICHEIROS = [
     './',
     './index.html',
@@ -34,7 +34,7 @@ self.addEventListener('fetch', (evento) => {
     if (req.method !== 'GET') return;
 
     const url = new URL(req.url);
-    if (url.origin !== self.location.origin) return; // deixa Firebase/gstatic em paz
+    if (url.origin !== self.location.origin) return; // deixa a nuvem (MantleDB) em paz
 
     if (req.mode === 'navigate') {
         evento.respondWith(
