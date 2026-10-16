@@ -63,6 +63,10 @@
             display: inline-block; margin-top: 12px; padding: 7px 14px; border-radius: 999px;
             background: rgba(20,14,11,0.85); color: var(--warning); font-size: 12px; font-weight: 700;
         }
+        .nota {
+            display: inline-block; margin-top: 8px; padding: 5px 12px; border-radius: 999px;
+            background: rgba(20,14,11,0.55); color: #FFF3D6; font-size: 11.5px; font-weight: 700;
+        }
         label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
         input, select {
             width: 100%; padding: 12px 14px; background: var(--surface-2);
@@ -207,11 +211,12 @@
             <div class="payer" id="last-payer">Ninguém registado</div>
             <small id="last-date"></small>
             <div><span class="badge" id="payer-badge" style="display:none;"></span></div>
+            <div><span class="nota" id="nota-marcador" style="display:none;"></span></div>
         </div>
 
         <div class="card" id="identidade-card" style="display:none;">
             <p class="card-title">🙋 Quem és tu neste grupo?</p>
-            <p class="hint"><strong>Passo necessário:</strong> toca no teu nome para aparecerem os botões de pagamento e a tua foto de perfil.</p>
+            <p class="hint">Escolhe o teu nome. Serve só para o registo dizer <strong>quem marcou</strong> o café. Podes marcar o café de qualquer pessoa.</p>
             <div id="identidade-opcoes"></div>
             <div class="field" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
                 <label for="identidade-novo">Não estás na lista? Escreve o teu nome:</label>
@@ -246,14 +251,14 @@
 
         <div class="card" id="membros-card">
             <p class="card-title">👥 Membros e Gastos</p>
-            <p class="hint" id="membros-hint">Escolhe primeiro quem és, em cima, para marcares os teus cafés.</p>
+            <p class="hint" id="membros-hint">Podes marcar o café de qualquer pessoa.</p>
             <div class="member-list" id="friends-list"></div>
             <button class="btn-ghost full-btn" id="btn-trocar-id" style="display:none; margin-top:12px;" onclick="trocarIdentidade()">🙋 Não sou eu — trocar</button>
         </div>
 
         <div class="card admin-section" id="admin-card">
             <p class="card-title">🔐 Gestão do Grupo</p>
-            <p class="hint">Só o gestor pode adicionar, remover ou renomear pessoas.</p>
+            <p class="hint">Adicionar, remover pessoas e reiniciar os gastos são só para o gestor.</p>
 
             <div id="gestor-bloqueado">
                 <div class="row">
@@ -443,6 +448,7 @@
             defaultPrice: grupo.defaultPrice,
             lastPayer: grupo.lastPayer,
             lastDate: grupo.lastDate,
+            lastMarcadoPor: grupo.lastMarcadoPor || '',
             friends: grupo.friends,
             passwordSalt: grupo.passwordSalt || null,
             passwordHash: grupo.passwordHash || null,
@@ -456,6 +462,7 @@
         grupo.defaultPrice = (typeof d.defaultPrice === 'number') ? d.defaultPrice : grupo.defaultPrice;
         grupo.lastPayer = d.lastPayer || 'Ninguém';
         grupo.lastDate = d.lastDate || '';
+        grupo.lastMarcadoPor = d.lastMarcadoPor || '';
         grupo.friends = Array.isArray(d.friends) ? d.friends.map(f => ({
             id: f.id, name: f.name, avatar: f.avatar || '', totalSpent: f.totalSpent || 0
         })) : grupo.friends;
@@ -567,6 +574,7 @@
             defaultPrice: 1.50,
             lastPayer: "Ninguém",
             lastDate: "",
+            lastMarcadoPor: "",
             friends: [
                 { id: 'm_1', name: donoNome || 'Gestor', avatar: "", totalSpent: 0 }
             ]
@@ -656,6 +664,7 @@
             defaultPrice: d.defaultPrice,
             lastPayer: d.lastPayer,
             lastDate: d.lastDate,
+            lastMarcadoPor: d.lastMarcadoPor || '',
             friends: d.friends || [],
             passwordHash: d.passwordHash || null,
             passwordSalt: d.passwordSalt || null,
@@ -807,18 +816,16 @@
         const g = grupoAtivo();
         const membro = g.friends.find(f => f.id === idMembro);
         if (!membro) return;
-        if (!(g.meuMembroId === idMembro || ehGestor(g))) {
-            definirEstadoSync('err', '🔒 Só podes marcar os teus cafés.');
-            return;
-        }
 
         const preco = calcularPreco();
         const agora = new Date().toLocaleString('pt-PT', {
             day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
 
+        const autor = meuMembro(g);
         g.lastPayer = membro.name;
         g.lastDate = agora;
+        g.lastMarcadoPor = (autor && autor.id !== idMembro) ? autor.name : '';
         if (!isNaN(preco)) membro.totalSpent = (membro.totalSpent || 0) + preco;
 
         guardarDados();
@@ -967,6 +974,7 @@
 
         grupo.lastPayer = 'Ninguém';
         grupo.lastDate = '';
+        grupo.lastMarcadoPor = '';
         grupo.friends = grupo.friends.map(f => Object.assign({}, f, { totalSpent: 0 }));
 
         guardarDados();
@@ -1038,6 +1046,14 @@
             payerBadge.style.display = 'none';
         }
 
+        const notaEl = document.getElementById('nota-marcador');
+        if (notaEl) {
+            const mostrar = grupo.lastMarcadoPor && grupo.lastPayer &&
+                grupo.lastMarcadoPor !== grupo.lastPayer;
+            notaEl.style.display = mostrar ? 'inline-block' : 'none';
+            if (mostrar) notaEl.textContent = `📝 registado por ${grupo.lastMarcadoPor}`;
+        }
+
         if (grupo.codigo) {
             syncCard.style.display = 'block';
             document.getElementById('codigo-grupo').textContent = formatarCodigo(grupo.codigo);
@@ -1050,29 +1066,24 @@
             defaultInput.value = grupo.defaultPrice || 1.50;
         }
 
-        // --- identidade ---
+        // --- identidade (opcional: serve para registar quem marcou) ---
         const meu = meuMembro(grupo);
         const temIdentidade = !!meu;
         const identidadeCard = document.getElementById('identidade-card');
         if (temIdentidade) {
             identidadeCard.style.display = 'none';
-            identidadeCard.classList.remove('destaque');
         } else {
             identidadeCard.style.display = 'block';
-            identidadeCard.classList.add('destaque');
             renderIdentidadeOpcoes(grupo);
         }
         const btnTrocar = document.getElementById('btn-trocar-id');
         if (btnTrocar) btnTrocar.style.display = temIdentidade ? 'block' : 'none';
         const membrosHint = document.getElementById('membros-hint');
-        if (membrosHint && meu) {
-            membrosHint.textContent = `Estás a marcar como ${meu.name}. Só marcas os teus cafés.`;
+        if (membrosHint) {
+            membrosHint.textContent = meu
+                ? `Estás a marcar como ${meu.name}. Podes marcar o café de qualquer pessoa.`
+                : 'Podes marcar o café de qualquer pessoa. Escolhe o teu nome em cima para o registo dizer quem marcou.';
         }
-
-        // sem identidade esconde o resto (obriga a escolher quem és primeiro)
-        document.getElementById('custos-card').style.display = temIdentidade ? 'block' : 'none';
-        document.getElementById('membros-card').style.display = temIdentidade ? 'block' : 'none';
-        document.getElementById('admin-card').style.display = temIdentidade ? 'block' : 'none';
 
         // --- gestão (só o gestor) ---
         const gestor = ehGestor(grupo);
@@ -1085,7 +1096,7 @@
             const linha = document.createElement('div');
             linha.className = 'member-row';
             const souEu = friend.id === grupo.meuMembroId;
-            const podeEditar = souEu || gestor;
+            const podeEditar = true;
             const nomeHtml = escapar(friend.name);
             const avatarAttr = friend.avatar ? `src="${friend.avatar}"` : '';
             const esconderImg = friend.avatar ? '' : `style="display:none"`;
