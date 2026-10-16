@@ -138,7 +138,7 @@
             border: 1px solid var(--border); border-radius: 14px; padding: 14px;
         }
         .pin-display { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
-        .pin-display strong { color: var(--accent); font-size: 18px; letter-spacing: 3px; }
+        .pin-display strong { color: var(--accent); font-size: 16px; letter-spacing: 1px; word-break: break-word; }
         .msg { font-size: 12px; min-height: 16px; margin: 8px 0 0; }
         .admin-section { display: flex; flex-direction: column; gap: 16px; }
         .admin-section h4 { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
@@ -390,16 +390,17 @@
         return bytesToBase64(new Uint8Array(bits));
     }
     async function verificarPin(grupo, pin) {
+        if (grupo.password) return pin === grupo.password;
         if (grupo.passwordHash) {
             const h = await derivarHash(pin, grupo.passwordSalt, grupo.passwordIter || ITERACOES_HASH);
             return h === grupo.passwordHash;
         }
-        return pin === grupo.password;
+        return false;
     }
-    function temPin(grupo) { return !!(grupo.passwordHash || grupo.password); }
+    function temPin(grupo) { return !!(grupo.password || grupo.passwordHash); }
     function pinVisivel(grupo) {
-        if (grupo.passwordHash) return '🔒 protegida';
         if (grupo.password) return grupo.password;
+        if (grupo.passwordHash) return '(não visível — define uma nova)';
         return '(sem palavra-passe)';
     }
     function escapar(txt) {
@@ -461,6 +462,7 @@
             lastDate: grupo.lastDate,
             lastMarcadoPor: grupo.lastMarcadoPor || '',
             friends: grupo.friends,
+            password: grupo.password || null,
             passwordSalt: grupo.passwordSalt || null,
             passwordHash: grupo.passwordHash || null,
             passwordIter: grupo.passwordIter || null,
@@ -477,7 +479,12 @@
         grupo.friends = Array.isArray(d.friends) ? d.friends.map(f => ({
             id: f.id, name: f.name, avatar: f.avatar || '', totalSpent: f.totalSpent || 0
         })) : grupo.friends;
-        if (d.passwordHash) {
+        if (d.password) {
+            grupo.password = d.password;
+            delete grupo.passwordHash;
+            delete grupo.passwordSalt;
+            delete grupo.passwordIter;
+        } else if (d.passwordHash) {
             grupo.passwordHash = d.passwordHash;
             grupo.passwordSalt = d.passwordSalt;
             grupo.passwordIter = d.passwordIter;
@@ -601,17 +608,9 @@
         if (pin === '') { mostrarMsg('criar-erro', 'Escreve uma palavra-passe.', false); return; }
 
         const codigo = gerarCodigo();
-        let salt = null, hash = null;
-        try {
-            salt = randomSalt();
-            hash = await derivarHash(pin, salt, ITERACOES_HASH);
-        } catch (e) {
-            mostrarMsg('criar-erro', 'Erro de segurança do browser. Usa HTTPS.', false);
-            return;
-        }
 
         const idLocal = 'g_' + Date.now();
-        const grupo = Object.assign({ id: idLocal, codigo: codigo, meuMembroId: 'm_1', criouAqui: true, passwordSalt: salt, passwordHash: hash, passwordIter: ITERACOES_HASH, versao: Date.now() }, estruturaBase(nome, dono));
+        const grupo = Object.assign({ id: idLocal, codigo: codigo, meuMembroId: 'm_1', criouAqui: true, password: pin, versao: Date.now() }, estruturaBase(nome, dono));
 
         // grava na nuvem
         gravando = true;
@@ -677,6 +676,7 @@
             lastDate: d.lastDate,
             lastMarcadoPor: d.lastMarcadoPor || '',
             friends: d.friends || [],
+            password: d.password || null,
             passwordHash: d.passwordHash || null,
             passwordSalt: d.passwordSalt || null,
             passwordIter: d.passwordIter || null,
@@ -904,19 +904,13 @@
         if (novo === '') { mostrarMsg('pin-msg', 'Escreve a nova palavra-passe.', false); return; }
         if (novo === atual) { mostrarMsg('pin-msg', 'A nova palavra-passe é igual à atual.', false); return; }
 
-        if (ehNuvem(grupo)) {
-            const salt = randomSalt();
-            const hash = await derivarHash(novo, salt, ITERACOES_HASH);
-            grupo.passwordSalt = salt;
-            grupo.passwordHash = hash;
-            grupo.passwordIter = ITERACOES_HASH;
-            delete grupo.password;
-            await gravarNuvem();
-        } else {
-            grupo.password = novo;
-        }
+        grupo.password = novo;
+        delete grupo.passwordHash;
+        delete grupo.passwordSalt;
+        delete grupo.passwordIter;
 
         guardarDados();
+        if (ehNuvem(grupo)) await gravarNuvem();
         campoAtual.value = '';
         campoNovo.value = '';
         document.getElementById('pin-mostrada').textContent = pinVisivel(grupo);
