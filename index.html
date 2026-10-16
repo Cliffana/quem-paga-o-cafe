@@ -320,6 +320,7 @@
 
     <div class="footer">
         <button class="btn-ghost full-btn" id="btn-instalar" style="display:none; margin-bottom:12px;" onclick="instalarApp()">📲 Instalar no telemóvel</button>
+        <button class="btn-ghost full-btn" id="btn-atualizar" style="margin-bottom:12px;" onclick="forcarAtualizacao()">🔄 Procurar atualizações</button>
         <button class="btn-danger" onclick="limparTudo()">⚠️ Limpar Todos os Grupos</button>
         <p class="credit">developed by Cliff Richard</p>
     </div>
@@ -1193,9 +1194,38 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) puxarNuvem(); });
 
     /* ===================== PWA ===================== */
+    window.forcarAtualizacao = async function () {
+        const b = document.getElementById('btn-atualizar');
+        if (b) { b.disabled = true; b.textContent = '🔄 A atualizar…'; }
+        try {
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map((r) => r.unregister()));
+            }
+            if (window.caches) {
+                const chaves = await caches.keys();
+                await Promise.all(chaves.map((k) => caches.delete(k)));
+            }
+        } catch (e) {}
+        const url = new URL(location.href);
+        url.searchParams.set('u', Date.now());
+        location.replace(url.toString());
+    };
+
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
+            navigator.serviceWorker.register('sw.js').then((reg) => {
+                reg.addEventListener('updatefound', () => {
+                    const novo = reg.installing;
+                    if (!novo) return;
+                    novo.addEventListener('statechange', () => {
+                        if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+                            const b = document.getElementById('btn-atualizar');
+                            if (b) b.textContent = '🔄 Nova versão disponível — atualizar';
+                        }
+                    });
+                });
+            }).catch(() => {});
         });
     }
 
