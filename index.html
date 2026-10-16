@@ -186,7 +186,7 @@
             <div style="height:8px"></div>
             <input type="text" id="new-group-dono" placeholder="O teu nome (gestor)...">
             <div style="height:8px"></div>
-            <input type="password" id="new-group-pin" placeholder="Palavra-passe do gestor (mín. 6)...">
+            <input type="password" id="new-group-pin" placeholder="Palavra-passe do gestor (mín. 4)...">
             <button class="full-btn" onclick="criarGrupo()" style="margin-top:10px;">Criar Grupo</button>
             <p class="msg" id="criar-erro"></p>
         </div>
@@ -283,7 +283,7 @@
                     <div class="panel" id="painel-pin">
                         <p class="pin-display">Palavra-passe atual: <strong id="pin-atual">----</strong></p>
                         <div class="row">
-                            <input type="text" id="novo-pin" placeholder="Nova palavra-passe (mín. 6)...">
+                            <input type="text" id="novo-pin" placeholder="Nova palavra-passe (mín. 4)...">
                             <button onclick="alterarPin()">Alterar</button>
                         </div>
                         <p class="msg" id="pin-msg"></p>
@@ -587,7 +587,7 @@
         const pin = document.getElementById('new-group-pin').value.trim();
 
         if (nome === '') { mostrarMsg('criar-erro', 'Dá um nome ao grupo.', false); return; }
-        if (pin.length < 6) { mostrarMsg('criar-erro', 'Usa uma palavra-passe com pelo menos 6 caracteres.', false); return; }
+        if (pin.length < 4) { mostrarMsg('criar-erro', 'Usa uma palavra-passe com pelo menos 4 caracteres.', false); return; }
 
         const codigo = gerarCodigo();
         let salt = null, hash = null;
@@ -852,7 +852,7 @@
         if (!ehGestor(grupo)) { mostrarMsg('pin-msg', 'Só o gestor pode alterar a palavra-passe.', false); return; }
 
         const novo = document.getElementById('novo-pin').value.trim();
-        if (novo.length < 6) { mostrarMsg('pin-msg', 'Mínimo 6 caracteres.', false); return; }
+        if (novo.length < 4) { mostrarMsg('pin-msg', 'Mínimo 4 caracteres.', false); return; }
 
         if (ehNuvem(grupo)) {
             const salt = randomSalt();
