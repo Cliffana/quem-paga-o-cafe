@@ -80,6 +80,7 @@
         .field + .field { margin-top: 12px; }
         .row { display: flex; gap: 8px; }
         .row input { flex: 1; min-width: 0; }
+        .row > button { flex: 1; }
         .exception {
             background: rgba(255,209,102,0.07); border: 1px dashed rgba(255,209,102,0.5);
             border-radius: 16px; padding: 12px;
@@ -229,10 +230,15 @@
         </div>
 
         <div class="card" id="sync-card" style="display:none;">
-            <p class="card-title">🔄 Sincronização</p>
+            <p class="card-title">🔄 Convidar e sincronizar</p>
             <p class="hint" style="text-align:center;">Envia este convite <strong>apenas</strong> às pessoas deste grupo:</p>
             <div class="code" id="codigo-grupo">----</div>
-            <button class="btn-ghost full-btn" onclick="partilharCodigo()">📋 Copiar convite (link + código)</button>
+            <button class="full-btn" onclick="partilharConvite()">📲 Convidar pessoas</button>
+            <div class="row" style="margin-top:8px;">
+                <button class="btn-ghost" onclick="convidarWhatsApp()">🟢 WhatsApp</button>
+                <button class="btn-ghost" onclick="convidarSMS()">💬 SMS</button>
+            </div>
+            <button class="btn-ghost full-btn" style="margin-top:8px;" onclick="copiarConvite()">📋 Copiar link do convite</button>
             <p style="font-size:11px; color:var(--muted); margin:8px 0 0; text-align:center;">O convite é um link: quem o abrir entra direto neste grupo.</p>
             <p class="msg" id="sync-estado"></p>
         </div>
@@ -694,24 +700,52 @@
         puxarNuvem();
     }
 
-    function partilharCodigo() {
+    function textoConvite(grupo) {
+        const codigo = formatarCodigo(grupo.codigo);
+        return `Entra no grupo "${grupo.name}" na app "Quem Paga o Café?" ☕\n` +
+            `Abre este link e entra direto no grupo:\n${linkConvite(grupo.codigo)}\n` +
+            `(código: ${codigo})`;
+    }
+
+    function partilharConvite() {
         const grupo = grupoAtivo();
         if (!grupo || !grupo.codigo) return;
-        const codigo = formatarCodigo(grupo.codigo);
-        const link = linkConvite(grupo.codigo);
-        const texto = `Entra no grupo "${grupo.name}" na app Quem Paga o Café? Abre este link: ${link}`;
-
+        const texto = textoConvite(grupo);
         if (navigator.share) {
-            navigator.share({ title: 'Quem Paga o Café?', text: texto, url: link }).catch(() => {});
-        } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(texto).then(
-                () => definirEstadoSync('on', '✅ Convite copiado (código ' + codigo + ')'),
-                () => definirEstadoSync('on', 'Link: ' + link)
-            );
+            navigator.share({ title: 'Quem Paga o Café?', text: texto }).catch(() => {});
         } else {
-            definirEstadoSync('on', 'Link: ' + link);
+            copiarConvite();
         }
     }
+
+    function convidarWhatsApp() {
+        const grupo = grupoAtivo();
+        if (!grupo || !grupo.codigo) return;
+        window.open('https://wa.me/?text=' + encodeURIComponent(textoConvite(grupo)), '_blank');
+    }
+
+    function convidarSMS() {
+        const grupo = grupoAtivo();
+        if (!grupo || !grupo.codigo) return;
+        location.href = 'sms:?body=' + encodeURIComponent(textoConvite(grupo));
+    }
+
+    function copiarConvite() {
+        const grupo = grupoAtivo();
+        if (!grupo || !grupo.codigo) return;
+        const texto = textoConvite(grupo);
+        const codigo = formatarCodigo(grupo.codigo);
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(texto).then(
+                () => definirEstadoSync('on', '✅ Convite copiado (código ' + codigo + ')'),
+                () => definirEstadoSync('on', 'Link: ' + linkConvite(grupo.codigo))
+            );
+        } else {
+            definirEstadoSync('on', 'Link: ' + linkConvite(grupo.codigo));
+        }
+    }
+
+    function partilharCodigo() { partilharConvite(); }
 
     /* ===================== membros ===================== */
     function atualizarPrecoPadrao() {
