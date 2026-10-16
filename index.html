@@ -285,10 +285,11 @@
                 </div>
 
                 <div style="margin-top:16px;">
+                    <p class="hint" id="gestor-sem-pin" style="display:none;">⚠️ Este grupo <strong>não tem palavra-passe</strong> — a gestão está aberta a todos. Define uma aqui em baixo para a fechar.</p>
                     <button class="btn-ghost full-btn" onclick="togglePainelPin()">🔑 Alterar palavra-passe</button>
                     <div class="panel" id="painel-pin">
                         <p class="pin-display">Palavra-passe: <strong id="pin-mostrada">----</strong></p>
-                        <div class="field">
+                        <div class="field" id="campo-pin-atual">
                             <label for="pin-atual">Palavra-passe atual</label>
                             <input type="password" id="pin-atual" placeholder="Escreve a palavra-passe atual...">
                         </div>
@@ -314,6 +315,19 @@
                 </div>
 
                 <button class="btn-ghost full-btn" style="margin-top:16px;" onclick="bloquearGestor()">🔒 Bloquear gestão</button>
+            </div>
+
+            <div id="recuperar-bloco" style="display:none; margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+                <button class="btn-ghost full-btn" onclick="toggleRecuperar()">🤔 Não sei a palavra-passe</button>
+                <div class="panel" id="recuperar-box">
+                    <p class="hint">Escreve a palavra-passe <strong>nova</strong>. A antiga deixa de funcionar.</p>
+                    <div class="field">
+                        <label for="recuperar-pin">Nova palavra-passe</label>
+                        <input type="password" id="recuperar-pin" placeholder="Escreve a nova palavra-passe...">
+                    </div>
+                    <button class="full-btn" style="margin-top:12px;" onclick="recuperarPalavraPasse()">Definir palavra-passe</button>
+                    <p class="msg" id="recuperar-msg"></p>
+                </div>
             </div>
         </div>
     </div>
@@ -433,7 +447,9 @@
     }
     function ehNuvem(grupo) { return !!(grupo && grupo.codigo); }
     function ehGestor(grupo) {
-        return !!(grupo && (grupo.criouAqui || sessaoGestor[grupo.id]));
+        if (!grupo) return false;
+        if (grupo.criouAqui || sessaoGestor[grupo.id]) return true;
+        return !temPin(grupo);   // sem palavra-passe nao ha nada a trancar
     }
     function meuMembro(grupo) {
         if (!grupo || !grupo.meuMembroId || !Array.isArray(grupo.friends)) return null;
@@ -881,6 +897,8 @@
         if (abrir) {
             const grupo = grupoAtivo();
             document.getElementById('pin-mostrada').textContent = grupo ? pinVisivel(grupo) : '----';
+            const campoAtualBloco = document.getElementById('campo-pin-atual');
+            if (campoAtualBloco) campoAtualBloco.style.display = (grupo && temPin(grupo)) ? 'block' : 'none';
             document.getElementById('pin-atual').value = '';
             document.getElementById('novo-pin').value = '';
             document.getElementById('pin-msg').textContent = '';
@@ -909,6 +927,8 @@
         delete grupo.passwordHash;
         delete grupo.passwordSalt;
         delete grupo.passwordIter;
+        sessaoGestor[grupo.id] = true;
+        grupo.criouAqui = true;
 
         guardarDados();
         if (ehNuvem(grupo)) await gravarNuvem();
@@ -916,6 +936,38 @@
         campoNovo.value = '';
         document.getElementById('pin-mostrada').textContent = pinVisivel(grupo);
         mostrarMsg('pin-msg', '✅ Palavra-passe alterada! Já podes usar a nova.', true);
+    }
+
+    function toggleRecuperar() {
+        const caixa = document.getElementById('recuperar-box');
+        const abrir = caixa.style.display !== 'block';
+        caixa.style.display = abrir ? 'block' : 'none';
+        if (abrir) {
+            document.getElementById('recuperar-pin').value = '';
+            document.getElementById('recuperar-msg').textContent = '';
+        }
+    }
+
+    async function recuperarPalavraPasse() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        const campo = document.getElementById('recuperar-pin');
+        const nova = campo.value.trim();
+        if (nova === '') { mostrarMsg('recuperar-msg', 'Escreve a palavra-passe nova.', false); return; }
+
+        grupo.password = nova;
+        delete grupo.passwordHash;
+        delete grupo.passwordSalt;
+        delete grupo.passwordIter;
+        grupo.criouAqui = true;
+        sessaoGestor[grupo.id] = true;
+
+        guardarDados();
+        if (ehNuvem(grupo)) await gravarNuvem();
+        campo.value = '';
+        document.getElementById('recuperar-box').style.display = 'none';
+        atualizarTela();
+        mostrarMsg('add-erro', '✅ Palavra-passe definida: ' + nova, true);
     }
 
     /* ===================== gestor ===================== */
@@ -938,11 +990,14 @@
 
     function bloquearGestor() {
         const grupo = grupoAtivo();
-        if (grupo) {
-            sessaoGestor[grupo.id] = false;
-            grupo.criouAqui = false;
-            guardarDados();
+        if (!grupo) return;
+        if (!temPin(grupo)) {
+            mostrarMsg('add-erro', '⚠️ Define primeiro uma palavra-passe (🔑 Alterar palavra-passe). Sem ela, a gestão fica aberta a todos.', false);
+            return;
         }
+        sessaoGestor[grupo.id] = false;
+        grupo.criouAqui = false;
+        guardarDados();
         atualizarTela();
         mostrarMsg('gestor-msg', '🔒 Gestão bloqueada.', true);
     }
@@ -1140,6 +1195,10 @@
         const gestor = ehGestor(grupo);
         document.getElementById('gestor-bloqueado').style.display = gestor ? 'none' : 'block';
         document.getElementById('gestor-aberto').style.display = gestor ? 'block' : 'none';
+        const semPin = document.getElementById('gestor-sem-pin');
+        if (semPin) semPin.style.display = temPin(grupo) ? 'none' : 'block';
+        const blocoRecuperar = document.getElementById('recuperar-bloco');
+        if (blocoRecuperar) blocoRecuperar.style.display = temPin(grupo) ? 'block' : 'none';
 
         // --- membros ---
         friendsList.innerHTML = '';
