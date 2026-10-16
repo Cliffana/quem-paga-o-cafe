@@ -3,7 +3,7 @@
    restantes ficheiros do próprio site = cache primeiro.
    Pedidos a outros domínios (nuvem de dados) passam diretos. */
 
-const CACHE = 'cafe-v5';
+const CACHE = 'cafe-v6';
 const FICHEIROS = [
     './',
     './index.html',
