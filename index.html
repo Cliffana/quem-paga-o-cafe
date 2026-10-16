@@ -435,6 +435,17 @@
                 }
             }
         } catch (e) { console.log("Erro na leitura local."); }
+        migrarGrupos();
+    }
+    function migrarGrupos() {
+        let mudou = false;
+        Object.values(dadosApp.grupos).forEach(g => {
+            if (typeof g.criouNesteTelefone !== 'boolean') {
+                g.criouNesteTelefone = !!(g.criouAqui || g.meuMembroId === 'm_1');
+                mudou = true;
+            }
+        });
+        if (mudou) guardarDados();
     }
     function guardarDados() {
         try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(dadosApp)); }
@@ -627,7 +638,7 @@
         const codigo = gerarCodigo();
 
         const idLocal = 'g_' + Date.now();
-        const grupo = Object.assign({ id: idLocal, codigo: codigo, meuMembroId: 'm_1', criouAqui: true, password: pin, versao: Date.now() }, estruturaBase(nome, dono));
+        const grupo = Object.assign({ id: idLocal, codigo: codigo, meuMembroId: 'm_1', criouAqui: true, criouNesteTelefone: true, password: pin, versao: Date.now() }, estruturaBase(nome, dono));
 
         // grava na nuvem
         gravando = true;
@@ -938,6 +949,10 @@
         mostrarMsg('pin-msg', '✅ Palavra-passe alterada! Já podes usar a nova.', true);
     }
 
+    function podeRecuperar(grupo) {
+        return !!(grupo && (grupo.criouNesteTelefone || grupo.criouAqui || sessaoGestor[grupo.id]));
+    }
+
     function toggleRecuperar() {
         const caixa = document.getElementById('recuperar-box');
         const abrir = caixa.style.display !== 'block';
@@ -951,6 +966,7 @@
     async function recuperarPalavraPasse() {
         const grupo = grupoAtivo();
         if (!grupo) return;
+        if (!podeRecuperar(grupo)) { mostrarMsg('recuperar-msg', 'Esta opção é só para o gestor.', false); return; }
         const campo = document.getElementById('recuperar-pin');
         const nova = campo.value.trim();
         if (nova === '') { mostrarMsg('recuperar-msg', 'Escreve a palavra-passe nova.', false); return; }
@@ -1198,7 +1214,7 @@
         const semPin = document.getElementById('gestor-sem-pin');
         if (semPin) semPin.style.display = temPin(grupo) ? 'none' : 'block';
         const blocoRecuperar = document.getElementById('recuperar-bloco');
-        if (blocoRecuperar) blocoRecuperar.style.display = temPin(grupo) ? 'block' : 'none';
+        if (blocoRecuperar) blocoRecuperar.style.display = (temPin(grupo) && podeRecuperar(grupo)) ? 'block' : 'none';
 
         // --- membros ---
         friendsList.innerHTML = '';
