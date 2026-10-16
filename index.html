@@ -144,6 +144,21 @@
             font-size: 24px; font-weight: 900; letter-spacing: 4px; text-align: center;
             color: var(--accent); margin: 10px 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
         }
+        .hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+        .ident-btn {
+            display: block; width: 100%; text-align: left;
+            background: var(--surface-2); color: var(--text);
+            border: 1px solid var(--border); box-shadow: none;
+            padding: 11px 14px; margin-bottom: 8px; font-weight: 700;
+        }
+        .tu {
+            flex-shrink: 0; font-size: 10px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--accent); border: 1px solid var(--accent);
+            border-radius: 999px; padding: 2px 8px;
+        }
+        .member-info .member-name-input { flex: 1 1 auto; width: auto; min-width: 0; }
+        .member-name-input[readonly] { background: transparent; border-color: transparent; }
+        .credit { font-size: 11px; color: var(--muted); opacity: .75; margin: 18px 0 0; letter-spacing: .5px; }
     </style>
 </head>
 <body>
@@ -164,6 +179,8 @@
         <div class="field" style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
             <label>Criar novo grupo</label>
             <input type="text" id="new-group-name" placeholder="Nome do novo grupo...">
+            <div style="height:8px"></div>
+            <input type="text" id="new-group-dono" placeholder="O teu nome (gestor)...">
             <div style="height:8px"></div>
             <input type="password" id="new-group-pin" placeholder="Palavra-passe do gestor (mín. 6)...">
             <button class="full-btn" onclick="criarGrupo()" style="margin-top:10px;">Criar Grupo</button>
@@ -192,11 +209,26 @@
             <div><span class="badge" id="payer-badge" style="display:none;"></span></div>
         </div>
 
+        <div class="card" id="identidade-card" style="display:none;">
+            <p class="card-title">🙋 Quem és tu neste grupo?</p>
+            <p class="hint">Toca no teu nome. A partir daí marcas apenas os teus cafés.</p>
+            <div id="identidade-opcoes"></div>
+            <div class="field" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+                <label for="identidade-novo">Não estás na lista? Escreve o teu nome:</label>
+                <div class="row">
+                    <input type="text" id="identidade-novo" placeholder="O teu nome...">
+                    <button class="btn-ghost" onclick="criarMinhaIdentidade()">Sou eu</button>
+                </div>
+            </div>
+            <p class="msg" id="identidade-msg"></p>
+        </div>
+
         <div class="card" id="sync-card" style="display:none;">
             <p class="card-title">🔄 Sincronização</p>
-            <p style="font-size:12px; color:var(--muted); margin:0 0 4px; text-align:center;">Partilha este código com os amigos para entrarem no grupo:</p>
+            <p class="hint" style="text-align:center;">Envia este convite <strong>apenas</strong> às pessoas deste grupo:</p>
             <div class="code" id="codigo-grupo">----</div>
-            <button class="btn-ghost full-btn" onclick="partilharCodigo()">📋 Copiar / Partilhar código</button>
+            <button class="btn-ghost full-btn" onclick="partilharCodigo()">📋 Copiar convite (link + código)</button>
+            <p style="font-size:11px; color:var(--muted); margin:8px 0 0; text-align:center;">O convite é um link: quem o abrir entra direto neste grupo.</p>
             <p class="msg" id="sync-estado"></p>
         </div>
 
@@ -214,46 +246,63 @@
 
         <div class="card">
             <p class="card-title">👥 Membros e Gastos</p>
-            <p style="font-size:12px; color:var(--muted); margin:-6px 0 12px;">Toca na foto para carregar/alterar o perfil.</p>
+            <p class="hint" id="membros-hint">Escolhe primeiro quem és, em cima, para marcares os teus cafés.</p>
             <table class="members">
                 <thead>
                     <tr><th>Amigo</th><th>Total</th><th style="text-align:right;">Ações</th></tr>
                 </thead>
                 <tbody id="friends-list"></tbody>
             </table>
+            <button class="btn-ghost full-btn" id="btn-trocar-id" style="display:none; margin-top:12px;" onclick="trocarIdentidade()">🙋 Não sou eu — trocar</button>
         </div>
 
         <div class="card admin-section">
-            <div>
-                <h4>⚙️ Adicionar pessoa ao grupo</h4>
+            <p class="card-title">🔐 Gestão do Grupo</p>
+            <p class="hint">Só o gestor pode adicionar, remover ou renomear pessoas.</p>
+
+            <div id="gestor-bloqueado">
                 <div class="row">
-                    <input type="text" id="new-name" placeholder="Nome do amigo...">
-                    <button onclick="addPerson()">Adicionar</button>
+                    <input type="password" id="gestor-pin" placeholder="Palavra-passe do gestor...">
+                    <button onclick="desbloquearGestor()">Desbloquear</button>
                 </div>
-                <p class="msg" id="add-erro"></p>
+                <p class="msg" id="gestor-msg"></p>
             </div>
 
-            <div>
-                <h4>🔐 Painel do Gestor</h4>
-                <button class="btn-ghost full-btn" onclick="togglePainelPin()">🔑 Palavra-passe</button>
-                <div class="panel" id="painel-pin">
-                    <p class="pin-display">Palavra-passe atual: <strong id="pin-atual">----</strong></p>
+            <div id="gestor-aberto" style="display:none;">
+                <div>
+                    <h4>⚙️ Adicionar pessoa ao grupo</h4>
                     <div class="row">
-                        <input type="text" id="novo-pin" placeholder="Nova palavra-passe (mín. 6)...">
-                        <button onclick="alterarPin()">Alterar</button>
+                        <input type="text" id="new-name" placeholder="Nome do amigo...">
+                        <button onclick="addPerson()">Adicionar</button>
                     </div>
-                    <p class="msg" id="pin-msg"></p>
+                    <p class="msg" id="add-erro"></p>
                 </div>
 
-                <button class="btn-danger full-btn" onclick="togglePainelReset()" style="margin-top:12px;">🔄 Reset aos dados do grupo</button>
-                <div class="panel" id="painel-reset">
-                    <label>Introduz a palavra-passe para confirmar o reset:</label>
-                    <div class="row">
-                        <input type="password" id="reset-pin" placeholder="Palavra-passe do gestor...">
-                        <button class="btn-danger" onclick="confirmarReset()">Resetar</button>
+                <div style="margin-top:16px;">
+                    <button class="btn-ghost full-btn" onclick="togglePainelPin()">🔑 Alterar palavra-passe</button>
+                    <div class="panel" id="painel-pin">
+                        <p class="pin-display">Palavra-passe atual: <strong id="pin-atual">----</strong></p>
+                        <div class="row">
+                            <input type="text" id="novo-pin" placeholder="Nova palavra-passe (mín. 6)...">
+                            <button onclick="alterarPin()">Alterar</button>
+                        </div>
+                        <p class="msg" id="pin-msg"></p>
                     </div>
-                    <p class="msg" id="reset-msg"></p>
                 </div>
+
+                <div style="margin-top:12px;">
+                    <button class="btn-danger full-btn" onclick="togglePainelReset()">🔄 Reset aos dados do grupo</button>
+                    <div class="panel" id="painel-reset">
+                        <label>Introduz a palavra-passe para confirmar o reset:</label>
+                        <div class="row">
+                            <input type="password" id="reset-pin" placeholder="Palavra-passe do gestor...">
+                            <button class="btn-danger" onclick="confirmarReset()">Resetar</button>
+                        </div>
+                        <p class="msg" id="reset-msg"></p>
+                    </div>
+                </div>
+
+                <button class="btn-ghost full-btn" style="margin-top:16px;" onclick="bloquearGestor()">🔒 Bloquear gestão</button>
             </div>
         </div>
     </div>
@@ -261,6 +310,7 @@
     <div class="footer">
         <button class="btn-ghost full-btn" id="btn-instalar" style="display:none; margin-bottom:12px;" onclick="instalarApp()">📲 Instalar no telemóvel</button>
         <button class="btn-danger" onclick="limparTudo()">⚠️ Limpar Todos os Grupos</button>
+        <p class="credit">developed by Cliff Richard</p>
     </div>
 </div>
 
@@ -282,6 +332,7 @@
     let timerPoll = null;
     let gravando = false;
     let vivoEnviado = false;
+    const sessaoGestor = {};   // por grupo: true quando o gestor desbloqueou nesta sessão
 
     /* ===================== utilitários ===================== */
     function bytesToBase64(bytes) {
@@ -368,6 +419,16 @@
         return dadosApp.grupos[id];
     }
     function ehNuvem(grupo) { return !!(grupo && grupo.codigo); }
+    function ehGestor(grupo) {
+        return !!(grupo && (grupo.criouAqui || sessaoGestor[grupo.id]));
+    }
+    function meuMembro(grupo) {
+        if (!grupo || !grupo.meuMembroId || !Array.isArray(grupo.friends)) return null;
+        return grupo.friends.find(f => f.id === grupo.meuMembroId) || null;
+    }
+    function linkConvite(codigo) {
+        return location.origin + location.pathname + '#' + codigo;
+    }
 
     /* ===================== nuvem (MantleDB) ===================== */
     function definirEstadoSync(tipo, texto) {
@@ -404,6 +465,9 @@
             grupo.passwordSalt = d.passwordSalt;
             grupo.passwordIter = d.passwordIter;
             delete grupo.password;
+        }
+        if (grupo.meuMembroId && !grupo.friends.some(f => f.id === grupo.meuMembroId)) {
+            grupo.meuMembroId = null;
         }
         grupo.versao = d.versao || grupo.versao || 0;
     }
@@ -498,21 +562,21 @@
         el.style.color = ok ? 'var(--success)' : 'var(--danger)';
     }
 
-    function estruturaBase(nome) {
+    function estruturaBase(nome, donoNome) {
         return {
             name: nome,
             defaultPrice: 1.50,
             lastPayer: "Ninguém",
             lastDate: "",
             friends: [
-                { id: 'm_1', name: "Tu (Gestor)", avatar: "", totalSpent: 0 },
-                { id: 'm_2', name: "Amigo 1", avatar: "", totalSpent: 0 }
+                { id: 'm_1', name: donoNome || 'Gestor', avatar: "", totalSpent: 0 }
             ]
         };
     }
 
     async function criarGrupo() {
         const nome = document.getElementById('new-group-name').value.trim();
+        const dono = document.getElementById('new-group-dono').value.trim();
         const pin = document.getElementById('new-group-pin').value.trim();
 
         if (nome === '') { mostrarMsg('criar-erro', 'Dá um nome ao grupo.', false); return; }
@@ -529,7 +593,7 @@
         }
 
         const idLocal = 'g_' + Date.now();
-        const grupo = Object.assign({ id: idLocal, codigo: codigo, passwordSalt: salt, passwordHash: hash, passwordIter: ITERACOES_HASH, versao: Date.now() }, estruturaBase(nome));
+        const grupo = Object.assign({ id: idLocal, codigo: codigo, meuMembroId: 'm_1', criouAqui: true, passwordSalt: salt, passwordHash: hash, passwordIter: ITERACOES_HASH, versao: Date.now() }, estruturaBase(nome, dono));
 
         // grava na nuvem
         gravando = true;
@@ -549,6 +613,7 @@
         dadosApp.grupos[idLocal] = grupo;
         dadosApp.grupoAtivo = idLocal;
         document.getElementById('new-group-name').value = '';
+        document.getElementById('new-group-dono').value = '';
         document.getElementById('new-group-pin').value = '';
         mostrarMsg('criar-erro', '');
         vivoEnviado = false;
@@ -556,19 +621,32 @@
         atualizarTela();
     }
 
-    async function entrarComCodigo() {
-        const codigo = normalizarCodigo(document.getElementById('codigo-entrar').value);
-        if (codigo.length !== 8) { mostrarMsg('entrar-erro', 'Código inválido (ex: K7M2-9QF4).', false); return; }
+    async function entrarComCodigo(codigoForcado) {
+        const campo = document.getElementById('codigo-entrar');
+        const codigo = normalizarCodigo(typeof codigoForcado === 'string' ? codigoForcado : campo.value);
+        if (codigo.length !== 8) { mostrarMsg('entrar-erro', 'Código inválido (ex: K7M2-9QF4).', false); return false; }
+
+        const jaExiste = Object.values(dadosApp.grupos).find(g => g.codigo === codigo);
+        if (jaExiste) {
+            dadosApp.grupoAtivo = jaExiste.id;
+            campo.value = '';
+            mostrarMsg('entrar-erro', '');
+            vivoEnviado = false;
+            guardarDados();
+            atualizarTela();
+            puxarNuvem();
+            return true;
+        }
 
         let d;
         try {
             const r = await fetch(urlGrupo(codigo), { cache: 'no-store' });
-            if (r.status === 404) { mostrarMsg('entrar-erro', 'Grupo não encontrado. Confirma o código.', false); return; }
-            if (!r.ok) { mostrarMsg('entrar-erro', 'Erro ' + r.status + '. Tenta novamente.', false); return; }
+            if (r.status === 404) { mostrarMsg('entrar-erro', 'Grupo não encontrado. Confirma o código.', false); return false; }
+            if (!r.ok) { mostrarMsg('entrar-erro', 'Erro ' + r.status + '. Tenta novamente.', false); return false; }
             d = await r.json();
         } catch (e) {
             mostrarMsg('entrar-erro', 'Sem ligação. Verifica a internet.', false);
-            return;
+            return false;
         }
 
         const idLocal = 'g_' + Date.now();
@@ -586,11 +664,12 @@
             versao: d.versao || 0
         };
         dadosApp.grupoAtivo = idLocal;
-        document.getElementById('codigo-entrar').value = '';
+        campo.value = '';
         mostrarMsg('entrar-erro', '');
         vivoEnviado = false;
         guardarDados();
         atualizarTela();
+        return true;
     }
 
     function alterarGrupo() {
@@ -606,17 +685,18 @@
         const grupo = grupoAtivo();
         if (!grupo || !grupo.codigo) return;
         const codigo = formatarCodigo(grupo.codigo);
-        const texto = `Junta-te ao grupo "${grupo.name}" na app Quem Paga o Café? Código: ${codigo}`;
+        const link = linkConvite(grupo.codigo);
+        const texto = `Entra no grupo "${grupo.name}" na app Quem Paga o Café? Abre este link: ${link}`;
 
         if (navigator.share) {
-            navigator.share({ title: 'Quem Paga o Café?', text: texto }).catch(() => {});
+            navigator.share({ title: 'Quem Paga o Café?', text: texto, url: link }).catch(() => {});
         } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(codigo).then(
-                () => definirEstadoSync('on', '✅ Código copiado: ' + codigo),
-                () => definirEstadoSync('on', 'Código: ' + codigo)
+            navigator.clipboard.writeText(texto).then(
+                () => definirEstadoSync('on', '✅ Convite copiado (código ' + codigo + ')'),
+                () => definirEstadoSync('on', 'Link: ' + link)
             );
         } else {
-            definirEstadoSync('on', 'Código: ' + codigo);
+            definirEstadoSync('on', 'Link: ' + link);
         }
     }
 
@@ -637,6 +717,7 @@
         const input = document.getElementById('new-name');
         const nomeAmigo = input.value.trim();
         if (!grupo) return;
+        if (!ehGestor(grupo)) { mostrarMsg('add-erro', 'Só o gestor pode adicionar pessoas.', false); return; }
         if (nomeAmigo === '') { mostrarMsg('add-erro', 'Escreve um nome.', false); return; }
 
         grupo.friends.push({ id: 'm_' + Date.now(), name: nomeAmigo, avatar: "", totalSpent: 0 });
@@ -650,15 +731,20 @@
     function removePerson(idAmigo) {
         const grupo = grupoAtivo();
         if (!grupo) return;
+        if (!ehGestor(grupo)) return;
         grupo.friends = grupo.friends.filter(f => f.id !== idAmigo);
+        if (grupo.meuMembroId === idAmigo) grupo.meuMembroId = null;
         guardarDados();
         gravarNuvem();
         atualizarTela();
     }
 
     function editarNome(idGrupo, idMembro, novoNome) {
-        if (!novoNome.trim()) return;
-        dadosApp.grupos[idGrupo].friends = dadosApp.grupos[idGrupo].friends.map(f =>
+        const grupo = dadosApp.grupos[idGrupo];
+        if (!grupo || !novoNome.trim()) return;
+        const souEu = grupo.meuMembroId === idMembro;
+        if (!souEu && !ehGestor(grupo)) return;
+        grupo.friends = grupo.friends.map(f =>
             f.id === idMembro ? Object.assign({}, f, { name: novoNome.trim() }) : f
         );
         guardarDados();
@@ -687,6 +773,7 @@
 
                 const grupo = dadosApp.grupos[grupoId];
                 if (!grupo) return;
+                if (!(grupo.meuMembroId === membroId || ehGestor(grupo))) return;
                 const membro = grupo.friends.find(f => f.id === membroId);
                 if (!membro) return;
                 membro.avatar = dataUrl;
@@ -721,6 +808,10 @@
         const g = grupoAtivo();
         const membro = g.friends.find(f => f.id === idMembro);
         if (!membro) return;
+        if (!(g.meuMembroId === idMembro || ehGestor(g))) {
+            definirEstadoSync('err', '🔒 Só podes marcar os teus cafés.');
+            return;
+        }
 
         const preco = calcularPreco();
         const agora = new Date().toLocaleString('pt-PT', {
@@ -752,6 +843,7 @@
     async function alterarPin() {
         const grupo = grupoAtivo();
         if (!grupo) return;
+        if (!ehGestor(grupo)) { mostrarMsg('pin-msg', 'Só o gestor pode alterar a palavra-passe.', false); return; }
 
         const novo = document.getElementById('novo-pin').value.trim();
         if (novo.length < 6) { mostrarMsg('pin-msg', 'Mínimo 6 caracteres.', false); return; }
@@ -772,6 +864,87 @@
         document.getElementById('pin-atual').textContent = pinVisivel(grupo);
         document.getElementById('novo-pin').value = '';
         mostrarMsg('pin-msg', '✅ Palavra-passe alterada!', true);
+    }
+
+    /* ===================== gestor ===================== */
+    async function desbloquearGestor() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        const pin = document.getElementById('gestor-pin').value.trim();
+        if (pin === '') { mostrarMsg('gestor-msg', 'Escreve a palavra-passe.', false); return; }
+        if (!temPin(grupo)) { mostrarMsg('gestor-msg', 'Este grupo não tem palavra-passe definida.', false); return; }
+        const ok = await verificarPin(grupo, pin);
+        if (!ok) { mostrarMsg('gestor-msg', 'Palavra-passe incorreta.', false); return; }
+        sessaoGestor[grupo.id] = true;
+        document.getElementById('gestor-pin').value = '';
+        mostrarMsg('gestor-msg', '');
+        atualizarTela();
+        mostrarMsg('add-erro', '✅ Gestão desbloqueada.', true);
+    }
+
+    function bloquearGestor() {
+        const grupo = grupoAtivo();
+        if (grupo) sessaoGestor[grupo.id] = false;
+        atualizarTela();
+    }
+
+    /* ===================== identidade ===================== */
+    function definirIdentidade(membroId) {
+        const grupo = grupoAtivo();
+        if (!grupo || !grupo.friends.some(f => f.id === membroId)) return;
+        grupo.meuMembroId = membroId;
+        guardarDados();
+        atualizarTela();
+    }
+
+    function criarMinhaIdentidade() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        const input = document.getElementById('identidade-novo');
+        const nome = input.value.trim();
+        if (nome === '') { mostrarMsg('identidade-msg', 'Escreve o teu nome.', false); return; }
+        const id = 'm_' + Date.now();
+        grupo.friends.push({ id: id, name: nome, avatar: '', totalSpent: 0 });
+        grupo.meuMembroId = id;
+        input.value = '';
+        mostrarMsg('identidade-msg', '');
+        guardarDados();
+        gravarNuvem();
+        atualizarTela();
+    }
+
+    function trocarIdentidade() {
+        const grupo = grupoAtivo();
+        if (!grupo) return;
+        grupo.meuMembroId = null;
+        guardarDados();
+        atualizarTela();
+    }
+
+    function renderIdentidadeOpcoes(grupo) {
+        const alvo = document.getElementById('identidade-opcoes');
+        if (!alvo) return;
+        if (!grupo.friends.length) {
+            alvo.innerHTML = '<p class="hint">Ainda não há ninguém neste grupo. Pede ao gestor para te adicionar.</p>';
+            return;
+        }
+        alvo.innerHTML = grupo.friends.map(f =>
+            `<button class="ident-btn" onclick="definirIdentidade('${f.id}')">${escapar(f.name)}</button>`
+        ).join('');
+    }
+
+    /* ===================== entrar por link ===================== */
+    async function verificarLinkEntrada() {
+        let bruto = '';
+        if (location.hash && location.hash.length > 1) bruto = location.hash.substring(1);
+        else {
+            const p = new URLSearchParams(location.search).get('codigo');
+            if (p) bruto = p;
+        }
+        const codigo = normalizarCodigo(bruto);
+        if (codigo.length !== 8) return;
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+        await entrarComCodigo(codigo);
     }
 
     /* ===================== reset ===================== */
@@ -876,28 +1049,62 @@
             defaultInput.value = grupo.defaultPrice || 1.50;
         }
 
+        // --- identidade ---
+        const meu = meuMembro(grupo);
+        const identidadeCard = document.getElementById('identidade-card');
+        if (meu) {
+            identidadeCard.style.display = 'none';
+        } else {
+            identidadeCard.style.display = 'block';
+            renderIdentidadeOpcoes(grupo);
+        }
+        const btnTrocar = document.getElementById('btn-trocar-id');
+        if (btnTrocar) btnTrocar.style.display = meu ? 'block' : 'none';
+        const membrosHint = document.getElementById('membros-hint');
+        if (membrosHint) {
+            membrosHint.textContent = meu
+                ? `Estás a marcar como ${meu.name}. Só marcas os teus cafés.`
+                : 'Escolhe primeiro quem és, em cima, para marcares os teus cafés.';
+        }
+
+        // --- gestão (só o gestor) ---
+        const gestor = ehGestor(grupo);
+        document.getElementById('gestor-bloqueado').style.display = gestor ? 'none' : 'block';
+        document.getElementById('gestor-aberto').style.display = gestor ? 'block' : 'none';
+
+        // --- membros ---
         friendsList.innerHTML = '';
         grupo.friends.forEach(friend => {
             const tr = document.createElement('tr');
+            const souEu = friend.id === grupo.meuMembroId;
+            const podeEditar = souEu || gestor;
             const nomeHtml = escapar(friend.name);
             const avatarAttr = friend.avatar ? `src="${friend.avatar}"` : '';
             const esconderImg = friend.avatar ? '' : `style="display:none"`;
+            const avatarAbrir = podeEditar
+                ? `onclick="document.getElementById('avatar-${grupo.id}-${friend.id}').click()" style="cursor:pointer"`
+                : '';
+            const badgeCamara = podeEditar ? '<span class="file-input-label">📷</span>' : '';
+            const botaoPagar = podeEditar
+                ? `<button class="btn-pay" onclick="handlePay('${friend.id}')">Paguei Hoje!</button>`
+                : '';
+            const botaoRemover = gestor
+                ? `<button class="btn-danger" onclick="removePerson('${friend.id}')">🗑️</button>`
+                : '';
             tr.innerHTML = `
                 <td>
                     <div class="member-info">
-                        <div class="avatar-container" onclick="document.getElementById('avatar-${grupo.id}-${friend.id}').click()">
+                        <div class="avatar-container" ${avatarAbrir}>
                             <img ${avatarAttr} ${esconderImg} alt="${nomeHtml}" class="avatar" onerror="this.style.display='none';">
-                            <span class="file-input-label">📷</span>
+                            ${badgeCamara}
                             <input type="file" id="avatar-${grupo.id}-${friend.id}" class="file-input" accept="image/*" onchange="uploadAvatar(this, '${grupo.id}', '${friend.id}')">
                         </div>
-                        <input type="text" class="member-name-input" value="${nomeHtml}" onchange="editarNome('${grupo.id}', '${friend.id}', this.value)">
+                        <input type="text" class="member-name-input" value="${nomeHtml}" ${podeEditar ? '' : 'readonly'} onchange="editarNome('${grupo.id}', '${friend.id}', this.value)">
+                        ${souEu ? '<span class="tu">tu</span>' : ''}
                     </div>
                 </td>
                 <td class="spent">€${(friend.totalSpent || 0).toFixed(2)}</td>
-                <td class="actions">
-                    <button class="btn-pay" onclick="handlePay('${friend.id}')">Paguei Hoje!</button>
-                    <button class="btn-danger" onclick="removePerson('${friend.id}')">🗑️</button>
-                </td>
+                <td class="actions">${botaoPagar}${botaoRemover}</td>
             `;
             friendsList.appendChild(tr);
         });
@@ -909,6 +1116,7 @@
     carregarDados();
     atualizarTela();
     puxarNuvem();
+    verificarLinkEntrada();
 
     document.addEventListener('visibilitychange', () => { if (!document.hidden) puxarNuvem(); });
 
