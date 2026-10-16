@@ -1,9 +1,9 @@
 /* Service Worker — permite instalar a app e funcionar offline.
    Estratégia: navegação = rede primeiro (para receber atualizações),
    restantes ficheiros do próprio site = cache primeiro.
-   Pedidos a outros domínios (Firebase, gstatic) passam diretos. */
+   Pedidos a outros domínios (nuvem de dados) passam diretos. */
 
-const CACHE = 'cafe-v1';
+const CACHE = 'cafe-v2';
 const FICHEIROS = [
     './',
     './index.html',
